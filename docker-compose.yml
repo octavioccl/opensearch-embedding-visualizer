@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: opensearch-vector-viz
+    environment:
+      - cluster.name=opensearch-cluster
+      - node.name=opensearch-node1
+      - discovery.seed_hosts=opensearch-node1
+      - cluster.initial_cluster_manager_nodes=opensearch-node1
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_INSTALL_DEMO_CONFIG=true"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data1:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600
+    networks:
+      - opensearch-net
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: opensearch-dashboards
+    ports:
+      - 5601:5601
+    expose:
+      - "5601"
+    environment:
+      - 'OPENSEARCH_HOSTS=["http://opensearch:9200"]'
+      - "DISABLE_SECURITY_DASHBOARDS_PLUGIN=true"
+    depends_on:
+      - opensearch
+    networks:
+      - opensearch-net
+
+  vector-visualizer:
+    build: .
+    container_name: vector-visualizer
+    ports:
+      - 8501:8501
+    environment:
+      - OPENSEARCH_HOST=opensearch
+      - OPENSEARCH_PORT=9200
+    depends_on:
+      - opensearch
+    networks:
+      - opensearch-net
+    volumes:
+      - ./data:/app/data
+
+volumes:
+  opensearch-data1:
+
+networks:
+  opensearch-net:
